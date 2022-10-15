@@ -1,9 +1,9 @@
-﻿using BenchmarkDotNet.Running;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Smo;
 using System;
 using System.IO;
+using BenchmarkDotNet.Running;
 
 namespace OptimizeMePlease
 {
@@ -24,28 +24,40 @@ namespace OptimizeMePlease
         static void Main(string[] args)
         {
             //Debugging 
-            BenchmarkService benchmarkService = new BenchmarkService();
-            benchmarkService.GetAuthors();
+            //BenchmarkService benchmarkService = new BenchmarkService();
+            //benchmarkService.GetAuthors_Optimized();
 
             //Comment me after first execution, please.
             //IWillPopulateData();
 
-            //BenchmarkRunner.Run<BenchmarkService>();
+            BenchmarkRunner.Run<BenchmarkService>();
         }
 
         public static void IWillPopulateData()
         {
-            string sqlConnectionString = @"Server=localhost;Database=OptimizeMePlease;Trusted_Connection=True;Integrated Security=true;MultipleActiveResultSets=true";
+            //create OptimizeMePlease db
+            RunRawSQL("master", "createdb");
+            //run query in OptimizeMePlease db
+            RunRawSQL("OptimizeMePlease", "script");
+        }
 
-            string workingDirectory = Environment.CurrentDirectory;
-            string path = Path.Combine(Directory.GetParent(workingDirectory).Parent.Parent.FullName, @"script.sql");
-            string script = File.ReadAllText(path);
+        private static void RunRawSQL(string databaseName, string fileName)
+        {
+            var sqlConnectionString =
+                $"Data Source=localhost;Initial Catalog={databaseName};User ID=sa;Password=Admin2013+";
 
-            SqlConnection conn = new SqlConnection(sqlConnectionString);
+            var workingDirectory = Environment.CurrentDirectory;
+            var directoryInfo = Directory.GetParent(workingDirectory).Parent.Parent;
+            if (directoryInfo != null)
+            {
+                var path = Path.Combine(directoryInfo.FullName, $"{fileName}.sql");
+                var script = File.ReadAllText(path);
 
-            Server server = new Server(new ServerConnection(conn));
+                var conn = new SqlConnection(sqlConnectionString);
+                var server = new Server(new ServerConnection(conn));
 
-            server.ConnectionContext.ExecuteNonQuery(script);
+                server.ConnectionContext.ExecuteNonQuery(script);
+            }
         }
     }
 }
